@@ -1,5 +1,5 @@
 const express = require('express');
-const Database = require('better-sqlite3');
+const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const bodyParser = require('body-parser');
 const fs = require('fs');
@@ -24,7 +24,9 @@ if (process.env.NODE_ENV === 'production') {
     }
 }
 
-const db = new Database(dbPath);
+const db = new sqlite3.Database(dbPath, (err) => {
+    // 以下は元のままでOK
+});
 
 // ルート
 app.get('/', (req, res) => {
@@ -40,24 +42,27 @@ app.get('/api/available-slots', (req, res) => {
     }
     
     // 指定された日付の予約済み時間枠を取得
-    const query = 'SELECT time FROM reservations WHERE date = ? AND status != "cancelled"';
-    const rows = db.prepare(query).all(date);
-    
-    // 予約済み時間枠
-    const bookedSlots = rows.map(row => row.time);
-    
-    // 営業時間: 17:00-21:00、30分ごと
-    const allSlots = [];
-    for (let hour = 17; hour < 21; hour++) {
-        for (let minute of [0, 30]) {
-            allSlots.push(`${hour}:${minute === 0 ? '00' : minute}`);
+    db.all('SELECT time FROM reservations WHERE date = ? AND status != "cancelled"', [date], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
         }
-    }
-    
-    // 利用可能な時間枠 = 全時間枠 - 予約済み時間枠
-    const availableSlots = allSlots.filter(slot => !bookedSlots.includes(slot));
-    
-    res.json({ availableSlots });
+        
+        // 予約済み時間枠
+        const bookedSlots = rows.map(row => row.time);
+        
+        // 営業時間: 17:00-21:00、30分ごと
+        const allSlots = [];
+        for (let hour = 17; hour < 21; hour++) {
+            for (let minute of [0, 30]) {
+                allSlots.push(`${hour}:${minute === 0 ? '00' : minute}`);
+            }
+        }
+        
+        // 利用可能な時間枠 = 全時間枠 - 予約済み時間枠
+        const availableSlots = allSlots.filter(slot => !bookedSlots.includes(slot));
+        
+        res.json({ availableSlots });
+    });
 });
 
 // 新規予約作成API
@@ -69,27 +74,35 @@ app.post('/api/reservations', (req, res) => {
     }
     
     // 指定された時間枠が既に予約されていないか確認
-    const query = 'SELECT id FROM reservations WHERE date = ? AND time = ? AND status != "cancelled"';
-    const row = db.prepare(query).get(date, time);
-    
-    if (row) {
-        return res.status(409).json({ error: '指定された時間枠は既に予約されています' });
-    }
-    
-    // 予約を作成
-    const sql = `
-        INSERT INTO reservations (name, email, phone, people, date, time, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    `;
-    
-    const info = db.prepare(sql).run(name, email, phone, people, date, time, notes);
-    
-    res.status(201).json({
-        message: '予約が作成されました',
-        id: info.lastInsertRowid
+    db.get('SELECT id FROM reservations WHERE date = ? AND time = ? AND status != "cancelled"', [date, time], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        
+        if (row) {
+            return res.status(409).json({ error: '指定された時間枠は既に予約されています' });
+        }
+        
+        // 予約を作成
+        const sql = `
+            INSERT INTO reservations (name, email, phone, people, date, time, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `;
+        
+        db.run(sql, [name, email, phone, people, date, time, notes], function(err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            
+            // 作成された予約のIDを返す
+            res.status(201).json({
+                message: '予約が作成されました',
+                id: this.lastID
+            });
+            
+            // TODO: 確認メールを送信する処理
+        });
     });
-    
-    // TODO: 確認メールを送信する処理
 });
 
 // 予約一覧取得API
@@ -119,22 +132,30 @@ app.get('/api/reservations', (req, res) => {
     
     sql += ' ORDER BY date ASC, time ASC';
     
-    const rows = db.prepare(sql).all(...params);
-    
-    res.json({ reservations: rows });
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        
+        res.json({ reservations: rows });
+    });
 });
 
 // 特定の予約を取得するAPI
 app.get('/api/reservations/:id', (req, res) => {
     const { id } = req.params;
     
-    const row = db.prepare('SELECT * FROM reservations WHERE id = ?').get(id);
-    
-    if (!row) {
-        return res.status(404).json({ error: '予約が見つかりません' });
-    }
-    
-    res.json({ reservation: row });
+    db.get('SELECT * FROM reservations WHERE id = ?', [id], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        
+        if (!row) {
+            return res.status(404).json({ error: '予約が見つかりません' });
+        }
+        
+        res.json({ reservation: row });
+    });
 });
 
 // 予約を更新するAPI
@@ -147,29 +168,36 @@ app.put('/api/reservations/:id', (req, res) => {
     }
     
     // 日時が変更された場合、その時間枠が利用可能か確認
-    const query = 'SELECT id FROM reservations WHERE id != ? AND date = ? AND time = ? AND status != "cancelled"';
-    const row = db.prepare(query).get(id, date, time);
-    
-    if (row) {
-        return res.status(409).json({ error: '指定された時間枠は既に予約されています' });
-    }
-    
-    // 予約を更新
-    const sql = `
-        UPDATE reservations
-        SET name = ?, email = ?, phone = ?, people = ?, date = ?, time = ?, notes = ?, status = ?
-        WHERE id = ?
-    `;
-    
-    const info = db.prepare(sql).run(name, email, phone, people, date, time, notes, status, id);
-    
-    if (info.changes === 0) {
-        return res.status(404).json({ error: '予約が見つかりません' });
-    }
-    
-    res.json({
-        message: '予約が更新されました',
-        id: id
+    db.get('SELECT id FROM reservations WHERE id != ? AND date = ? AND time = ? AND status != "cancelled"', [id, date, time], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        
+        if (row) {
+            return res.status(409).json({ error: '指定された時間枠は既に予約されています' });
+        }
+        
+        // 予約を更新
+        const sql = `
+            UPDATE reservations
+            SET name = ?, email = ?, phone = ?, people = ?, date = ?, time = ?, notes = ?, status = ?
+            WHERE id = ?
+        `;
+        
+        db.run(sql, [name, email, phone, people, date, time, notes, status, id], function(err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            
+            if (this.changes === 0) {
+                return res.status(404).json({ error: '予約が見つかりません' });
+            }
+            
+            res.json({
+                message: '予約が更新されました',
+                id: id
+            });
+        });
     });
 });
 
@@ -177,15 +205,19 @@ app.put('/api/reservations/:id', (req, res) => {
 app.patch('/api/reservations/:id/cancel', (req, res) => {
     const { id } = req.params;
     
-    const info = db.prepare('UPDATE reservations SET status = "cancelled" WHERE id = ?').run(id);
-    
-    if (info.changes === 0) {
-        return res.status(404).json({ error: '予約が見つかりません' });
-    }
-    
-    res.json({
-        message: '予約がキャンセルされました',
-        id: id
+    db.run('UPDATE reservations SET status = "cancelled" WHERE id = ?', [id], function(err) {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        
+        if (this.changes === 0) {
+            return res.status(404).json({ error: '予約が見つかりません' });
+        }
+        
+        res.json({
+            message: '予約がキャンセルされました',
+            id: id
+        });
     });
 });
 
