@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>予約システム</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>予約システム</h1>
+            <nav>
+                <ul>
+                    <li><a href="index.html" class="active">予約する</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <main>
+            <div class="reservation-container">
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <button id="prev-month">&lt;</button>
+                        <h2 id="month-year">2025年3月</h2>
+                        <button id="next-month">&gt;</button>
+                    </div>
+                    <div class="weekdays">
+                        <div>日</div>
+                        <div>月</div>
+                        <div>火</div>
+                        <div>水</div>
+                        <div>木</div>
+                        <div>金</div>
+                        <div>土</div>
+                    </div>
+                    <div id="calendar" class="days"></div>
+                </div>
+                
+                <div class="time-slots-container">
+                    <h3 id="selected-date">日付を選択してください</h3>
+                    <div id="time-slots" class="time-slots"></div>
+                </div>
+            </div>
+            
+            <div id="reservation-form-container" class="hidden">
+                <h3>予約フォーム</h3>
+                <form id="reservation-form">
+                    <div class="form-group">
+                        <label for="name">お名前</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">メールアドレス</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="phone">電話番号</label>
+                        <input type="tel" id="phone" name="phone" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="num-people">人数</label>
+                        <input type="number" id="num-people" name="num-people" min="1" max="10" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notes">備考</label>
+                        <textarea id="notes" name="notes" rows="4"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>予約日時:</label>
+                        <p id="reservation-datetime"></p>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" id="cancel-reservation" class="button secondary">キャンセル</button>
+                        <button type="submit" class="button primary">予約する</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+        
+        <div id="success-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>予約が完了しました</h3>
+                <p>ご予約いただきありがとうございます。確認メールをお送りしました。</p>
+                <button id="close-modal" class="button primary">閉じる</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

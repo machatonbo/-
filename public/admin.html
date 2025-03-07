@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>予約管理システム</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>予約管理システム</h1>
+            <nav>
+                <ul>
+                    <li><a href="index.html">予約する</a></li>
+                    <li><a href="admin.html" class="active">予約一覧</a></li>
+                </ul>
+            </nav>
+        </header>
+        
+        <main>
+            <div class="admin-controls">
+                <div class="filter-container">
+                    <label for="date-filter">日付:</label>
+                    <input type="date" id="date-filter">
+                    
+                    <label for="status-filter">ステータス:</label>
+                    <select id="status-filter">
+                        <option value="">すべて</option>
+                        <option value="confirmed">確認済み</option>
+                        <option value="cancelled">キャンセル済み</option>
+                    </select>
+                    
+                    <button id="apply-filter" class="button primary">適用</button>
+                    <button id="clear-filter" class="button secondary">クリア</button>
+                </div>
+            </div>
+            
+            <div class="reservations-container">
+                <h2>予約一覧</h2>
+                <div id="reservations-table-container">
+                    <table id="reservations-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>日付</th>
+                                <th>時間</th>
+                                <th>お名前</th>
+                                <th>人数</th>
+                                <th>ステータス</th>
+                                <th>アクション</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reservations-tbody">
+                            <!-- 予約データがここに挿入されます -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="no-reservations" class="hidden">予約がありません</div>
+            </div>
+        </main>
+        
+        <!-- 予約編集モーダル -->
+        <div id="edit-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>予約編集</h3>
+                <form id="edit-form">
+                    <input type="hidden" id="edit-id">
+                    
+                    <div class="form-group">
+                        <label for="edit-name">お名前</label>
+                        <input type="text" id="edit-name" name="edit-name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit-email">メールアドレス</label>
+                        <input type="email" id="edit-email" name="edit-email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit-phone">電話番号</label>
+                        <input type="tel" id="edit-phone" name="edit-phone" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit-people">人数</label>
+                        <input type="number" id="edit-people" name="edit-people" min="1" max="10" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit-date">日付</label>
+                        <input type="date" id="edit-date" name="edit-date" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit-time">時間</label>
+                        <select id="edit-time" name="edit-time" required>
+                            <!-- 利用可能な時間スロットがここに挿入されます -->
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit-notes">備考</label>
+                        <textarea id="edit-notes" name="edit-notes" rows="4"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit-status">ステータス</label>
+                        <select id="edit-status" name="edit-status" required>
+                            <option value="confirmed">確認済み</option>
+                            <option value="cancelled">キャンセル済み</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" id="close-edit-modal" class="button secondary">キャンセル</button>
+                        <button type="submit" class="button primary">更新</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 成功メッセージモーダル -->
+        <div id="admin-success-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3 id="success-title">処理が完了しました</h3>
+                <p id="success-message">予約情報が更新されました。</p>
+                <button id="close-success-modal" class="button primary">閉じる</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="admin.js"></script>
+</body>
+</html>
