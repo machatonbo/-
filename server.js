@@ -2,6 +2,7 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const bodyParser = require('body-parser');
+const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -16,9 +17,6 @@ const dbPath = process.env.NODE_ENV === 'production'
     : './reservations.db';
 
 // データベース接続前にディレクトリ作成を確認
-const fs = require('fs');
-const path = require('path');
-
 if (process.env.NODE_ENV === 'production') {
     const dir = path.dirname(dbPath);
     if (!fs.existsSync(dir)) {
